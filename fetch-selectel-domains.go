@@ -45,6 +45,9 @@ func main() {
 		exitWithMsg(err.Error())
 	}
 	for _, z := range listZones {
+		if z.ID != 0 {
+			continue
+		}
 		fmt.Println("\r\n" + strconv.Itoa(z.ID) + "\t" + z.Name + "\r\n" + strings.Repeat("-", 36))
 		listRecords, err := getRecordsList(z.ID)
 		if err != nil {
@@ -110,6 +113,9 @@ func (r selectelRecord) ToString() string {
 	case "A":
 		return fmt.Sprintf("%s.\t\t%d\tIN\tA\t%s",
 			r.Name, r.TTL, r.Content)
+	case "AAAA":
+		return fmt.Sprintf("%s.\t\t%d\tIN\tAAAA\t%s",
+			r.Name, r.TTL, r.Content)
 	case "CNAME":
 		return fmt.Sprintf("%s.\t\t%d\tIN\tCNAME\t%s.",
 			r.Name, r.TTL, r.Content)
@@ -128,12 +134,6 @@ func (r selectelRecord) ToString() string {
 	case "TXT":
 		return fmt.Sprintf("%s.\t\t%d\tIN\tTXT\t\"%s\"",
 			r.Name, r.TTL, r.Content)
-	/*	case "SRV":
-			return fmt.Sprintf("%-24s %6d %-6s %d %d %d %s",
-				r.IdnName, r.TTL, r.Type, r.SRV.Priority, r.SRV.Weight, r.SRV.Port, r.SRV.Target.IdnName)
-		case "TXT":
-			return fmt.Sprintf("%-24s %6d %-6s \"%s\"",
-				r.IdnName, r.TTL, r.Type, r.TXT.String)*/
 	default:
 		log.Printf("ERROR: unknown record '%+v'", r)
 		return ""
