@@ -32,9 +32,10 @@ func init() {
 		}
 		log.Printf("INFO: Use '%s' = %s", reqPars[i], viper.GetString(reqPars[i]))
 	}
+	viper.SetDefault("DefaultTTL", 86400)
+	log.Printf("INFO: Use 'DefaultTTL' = %d", viper.GetInt("DefaultTTL"))
 	if _, err := os.Stat(viper.GetString("TargetPath")); err != nil {
-		exitWithMsg(fmt.Sprintf("Path '%s' not found",
-			viper.GetString("TargetPath")))
+		exitWithMsg(fmt.Sprintf("Path '%s' not found", viper.GetString("TargetPath")))
 	}
 }
 
@@ -45,17 +46,12 @@ func main() {
 		exitWithMsg(err.Error())
 	}
 	for _, z := range listZones {
-		if z.ID != 0 {
-			continue
-		}
-		fmt.Println("\r\n" + strconv.Itoa(z.ID) + "\t" + z.Name + "\r\n" + strings.Repeat("-", 36))
-		listRecords, err := getRecordsList(z.ID)
+		zone, err := z.ToString()
 		if err != nil {
 			log.Printf("WARN: %s", err)
+			continue
 		}
-		for _, r := range listRecords {
-			fmt.Println(r.ToString())
-		}
+		fmt.Println(zone)
 	}
 	log.Println("INFO: Stop Successfull")
 }
@@ -81,6 +77,48 @@ func getZonesList() (z []selectelZone, err error) {
 		return z, err
 	}
 	return z, nil
+}
+
+func (z selectelZone) ToString() (string, error) {
+	listRecords, err := getRecordsList(z.ID)
+	if err != nil {
+		return "", err
+	}
+	groups := make(map[string]string)
+	head := fmt.Sprintf("$ORIGIN %s.\r\n$TTL %d\r\n\r\n",
+		z.Name, viper.GetInt("DefaultTTL"))
+	for _, r := range listRecords {
+		switch r.Type {
+		case "A":
+			groups["A"] += (r.ToString() + "\r\n")
+		case "AAAA":
+			groups["AAAA"] += (r.ToString() + "\r\n")
+		case "CNAME":
+			groups["CNAME"] += (r.ToString() + "\r\n")
+		case "MX":
+			groups["MX"] += (r.ToString() + "\r\n")
+		case "NS":
+			groups["NS"] += (r.ToString() + "\r\n")
+		case "SOA":
+			groups["SOA"] += (r.ToString() + "\r\n")
+		case "SRV":
+			groups["SRV"] += (r.ToString() + "\r\n")
+		case "TXT":
+			groups["TXT"] += (r.ToString() + "\r\n")
+		default:
+			log.Printf("ERROR: unknown record '%+v'", r)
+		}
+	}
+	zone := head +
+		groups["SOA"] +
+		groups["NS"] +
+		groups["MX"] +
+		groups["A"] +
+		groups["AAAA"] +
+		groups["CNAME"] +
+		groups["TXT"] +
+		groups["SRV"]
+	return zone, nil
 }
 
 func getRecordsList(ID int) (r []selectelRecord, err error) {
@@ -109,31 +147,36 @@ func getRecordsList(ID int) (r []selectelRecord, err error) {
 }
 
 func (r selectelRecord) ToString() string {
+	ttlString := ""
+	if viper.GetInt("DefaultTTL") != r.TTL {
+		ttlString = strconv.Itoa(r.TTL)
+	}
 	switch r.Type {
 	case "A":
-		return fmt.Sprintf("%s.\t\t%d\tIN\tA\t%s",
-			r.Name, r.TTL, r.Content)
+		return fmt.Sprintf("%s.\t\t%s\tIN\tA\t%s",
+			r.Name, ttlString, r.Content)
 	case "AAAA":
-		return fmt.Sprintf("%s.\t\t%d\tIN\tAAAA\t%s",
-			r.Name, r.TTL, r.Content)
+		return fmt.Sprintf("%s.\t\t%s\tIN\tAAAA\t%s",
+			r.Name, ttlString, r.Content)
 	case "CNAME":
-		return fmt.Sprintf("%s.\t\t%d\tIN\tCNAME\t%s.",
-			r.Name, r.TTL, r.Content)
+		return fmt.Sprintf("%s.\t\t%s\tIN\tCNAME\t%s.",
+			r.Name, ttlString, r.Content)
 	case "MX":
-		return fmt.Sprintf("%s.\t\t%d\tIN\tMX\t%d\t%s.",
-			r.Name, r.TTL, r.Priority, r.Content)
+		return fmt.Sprintf("%s.\t\t%s\tIN\tMX\t%d\t%s.",
+			r.Name, ttlString, r.Priority, r.Content)
 	case "NS":
-		return fmt.Sprintf("%s.\t\tIN\tNS\t%s.",
-			r.Name, r.Content)
+		return fmt.Sprintf("%s.\t\t%s\tIN\tNS\t%s.",
+			r.Name, ttlString, r.Content)
 	case "SOA":
-		return fmt.Sprintf("%s.\t\tIN\tSOA\t%s",
-			r.Name, r.Content)
+		soa := strings.SplitAfterN(r.Content, " ", 3)
+		return fmt.Sprintf("%s.\t\t%s\tIN\tSOA\t%s %s ( %s )",
+			r.Name, ttlString, soa[0], soa[1], soa[2])
 	case "SRV":
-		return fmt.Sprintf("%s.\t\t%d\tIN\tSRV\t%d\t%d\t%d\t%s.",
-			r.Name, r.TTL, r.Priority, r.Weight, r.Port, r.Target)
+		return fmt.Sprintf("%s.\t\t%s\tIN\tSRV\t%d\t%d\t%d\t%s.",
+			r.Name, ttlString, r.Priority, r.Weight, r.Port, r.Target)
 	case "TXT":
-		return fmt.Sprintf("%s.\t\t%d\tIN\tTXT\t\"%s\"",
-			r.Name, r.TTL, r.Content)
+		return fmt.Sprintf("%s.\t\t%s\tIN\tTXT\t\"%s\"",
+			r.Name, ttlString, r.Content)
 	default:
 		log.Printf("ERROR: unknown record '%+v'", r)
 		return ""
