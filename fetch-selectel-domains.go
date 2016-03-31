@@ -46,12 +46,16 @@ func main() {
 		exitWithMsg(err.Error())
 	}
 	for _, z := range listZones {
+		log.Printf("INFO: Fetch '%s'", z.Name)
 		zone, err := z.ToString()
 		if err != nil {
 			log.Printf("WARN: %s", err)
 			continue
 		}
-		fmt.Println(zone)
+		zoneFile := filepath.Join(viper.GetString("TargetPath"), z.Name+".dns")
+		if err := ioutil.WriteFile(zoneFile, []byte(zone), 0666); err != nil {
+			log.Printf("WARN: write file zone '%s' error: %s", z.Name, err)
+		}
 	}
 	log.Println("INFO: Stop Successfull")
 }
