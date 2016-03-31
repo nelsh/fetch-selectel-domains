@@ -2,6 +2,8 @@
 
 Fetch (dump) dns zones from https://selectel.ru/services/dns/
 
+Linux x64 binary: https://github.com/nelsh/fetch-selectel-domains/releases/download/v1.0/fetch-selectel-domains
+
 Example config `fetch-selectel-domains.yaml`
 
     APIURL:   "https://api.selectel.ru/domains/v1/"
