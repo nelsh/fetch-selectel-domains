@@ -15,8 +15,8 @@ import (
 )
 
 func init() {
-	// проверка конфигурационного файла
-	viper.SetConfigFile(filepath.Base(os.Args[0]) + ".yaml")
+	// check config file
+	viper.SetConfigFile(filepath.Join("/etc/", filepath.Base(os.Args[0])+".yaml"))
 	if err := viper.ReadInConfig(); err != nil {
 		exitWithMsg(err.Error())
 	}
