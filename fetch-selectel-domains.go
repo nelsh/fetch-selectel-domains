@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -14,7 +15,13 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	verbose bool
+)
+
 func init() {
+	flag.BoolVar(&verbose, "v", false, "Verbose logging")
+	flag.Parse()
 	// check config file
 	viper.SetConfigFile(filepath.Join("/etc/", filepath.Base(os.Args[0])+".yaml"))
 	if err := viper.ReadInConfig(); err != nil {
@@ -26,38 +33,60 @@ func init() {
 		"APItoken",
 		"TargetPath",
 	}
-	for i := range reqPars {
-		if !viper.IsSet(reqPars[i]) {
-			exitWithMsg(fmt.Sprintf("'%s' not found in config", reqPars[i]))
+	if verbose {
+		for i := range reqPars {
+			if !viper.IsSet(reqPars[i]) {
+				exitWithMsg(fmt.Sprintf("'%s' not found in config", reqPars[i]))
+			}
+			if reqPars[i] == "APItoken" {
+				log.Printf("INFO: Use '%s' = ****", reqPars[i])
+			} else {
+				log.Printf("INFO: Use '%s' = %s", reqPars[i], viper.GetString(reqPars[i]))
+			}
 		}
-		log.Printf("INFO: Use '%s' = %s", reqPars[i], viper.GetString(reqPars[i]))
 	}
 	viper.SetDefault("DefaultTTL", 86400)
-	log.Printf("INFO: Use 'DefaultTTL' = %d", viper.GetInt("DefaultTTL"))
+	if verbose {
+		log.Printf("INFO: Use 'DefaultTTL' = %d", viper.GetInt("DefaultTTL"))
+	}
 	if _, err := os.Stat(viper.GetString("TargetPath")); err != nil {
 		exitWithMsg(fmt.Sprintf("Path '%s' not found", viper.GetString("TargetPath")))
 	}
 }
 
 func main() {
-	log.Println("INFO: Start Fetch")
+	if verbose {
+		log.Println("INFO: Start Fetch")
+	}
 	listZones, err := getZonesList()
 	if err != nil {
 		exitWithMsg(err.Error())
 	}
+	if verbose {
+		log.Printf("INFO: Found %d zones", len(listZones))
+	}
+	totalErr := 0
 	for _, z := range listZones {
-		log.Printf("INFO: Fetch '%s'", z.Name)
+		if verbose {
+			log.Printf("INFO: Fetch '%s'", z.Name)
+		}
 		zone, err := z.ToString()
 		if err != nil {
 			log.Printf("WARN: %s", err)
+			totalErr++
 			continue
 		}
 		zoneFile := filepath.Join(viper.GetString("TargetPath"), z.Name+".dns")
 		if err := ioutil.WriteFile(zoneFile, []byte(zone), 0666); err != nil {
 			log.Printf("WARN: write file zone '%s' error: %s", z.Name, err)
+			totalErr++
 		}
 	}
-	log.Println("INFO: Stop Successfull")
+	if verbose {
+		log.Println("INFO: Stop Successfull")
+	}
+	fmt.Printf("Fetched %d from %d zones, errors = %d\r\n",
+		len(listZones)-totalErr, len(listZones), totalErr)
 }
 
 func getZonesList() (z []selectelZone, err error) {
