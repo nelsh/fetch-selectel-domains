@@ -19,7 +19,7 @@ Fetch (dump) dns zones from https://selectel.ru/services/dns/
     
 4. Run
 
-        $ /usr/local/bin/fetch-selectel-domains
+        $ /usr/local/bin/fetch-selectel-domains -v
     
 5. See files in `/home/username/selectel-zones`
 
