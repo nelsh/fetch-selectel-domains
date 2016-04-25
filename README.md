@@ -4,7 +4,7 @@ Fetch (dump) dns zones from https://selectel.ru/services/dns/
 
 **Install and run**
 
-1. Download Linux x64 binary https://github.com/nelsh/fetch-selectel-domains/releases/download/v1.01/fetch-selectel-domains to any location. For example: to `/usr/local/bin`
+1. Download Linux x64 binary https://github.com/nelsh/fetch-selectel-domains/releases/download/v1.0.2/fetch-selectel-domains to any location. For example: to `/usr/local/bin`
 
 2. Create config `/etc/fetch-selectel-domains.yaml`. Example:
 
